@@ -31,9 +31,10 @@ Partner: "The whole event was like a wine tasting party."
 You: "I saw the photos — whoever brought that 2019 Bordeaux basically became the hero of the night." (builds on the wine tasting detail + raises the story)
 
 BAD reactions (NEVER do this):
-❌ Echoing: "I'm so happy you came to the birthday party of the ninety-three year old uncle who..." (just repeating what they said before adding anything)
+❌ Echo-question: "One thousand squats for warm-up?" (just bouncing their words back as a question adds nothing)
+❌ Echoing: "I'm so happy you came to the birthday party of the ninety-three year old uncle who..." (repeating what they said before adding anything)
 ❌ Ignoring what they said and going in a new direction
-❌ Generic responses that could follow anything: "Wow, really?"
+❌ Generic filler: "Wow, really?" / "That's amazing!" (could follow anything, adds nothing)
 ❌ "No, that's not true"
 ❌ "I don't think so"
 ❌ Changing the subject

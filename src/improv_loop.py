@@ -281,7 +281,7 @@ class ImprovSession:
             last = word[-1]
             core = word.rstrip('.!?')
             # A real sentence end: ! or ?, or . after a word longer than 2 chars
-            if last in '!?' or (last == '.' and len(core) > 3):
+            if last in '!?' or (last == '.' and len(core) > 2):
                 sentences.append(' '.join(current))
                 current = []
 
