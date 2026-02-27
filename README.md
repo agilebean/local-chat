@@ -19,6 +19,10 @@ Real-time voice-to-voice theatrical improv partner using local MLX models (Apple
 ## Installation
 
 ```bash
+# Create and activate a virtual environment (Python 3.10+)
+python3 -m venv .venv
+source .venv/bin/activate
+
 pip install -r requirements.txt
 ```
 
@@ -53,6 +57,10 @@ python improv.py --voice-sample my_voice.wav
 | LLM | Qwen3-4B-Instruct (local, from LM Studio) |
 | TTS | Qwen3-TTS-12Hz-0.6B-CustomVoice-8bit (HuggingFace) |
 | STT | mlx-community/whisper-tiny (HuggingFace) |
+
+## First Run
+
+On first run, the TTS and STT models are automatically downloaded from HuggingFace (~500MB total). This takes a few minutes and only happens once. Subsequent runs load from the local cache.
 
 ## Exit
 
