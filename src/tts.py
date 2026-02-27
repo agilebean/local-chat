@@ -92,11 +92,17 @@ class MlxTts:
         else:
             kwargs["voice"] = voice
 
-        results = self.model.generate(**kwargs)
-
-        audio_chunks = []
-        for result in results:
-            audio_chunks.append(result.audio)
+        import io
+        import sys
+        _stdout = sys.stdout
+        sys.stdout = io.StringIO()
+        try:
+            results = self.model.generate(**kwargs)
+            audio_chunks = []
+            for result in results:
+                audio_chunks.append(result.audio)
+        finally:
+            sys.stdout = _stdout
 
         if len(audio_chunks) > 1:
             import mlx.core as mx

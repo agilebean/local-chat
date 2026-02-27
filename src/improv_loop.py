@@ -2,6 +2,7 @@
 import os
 import warnings
 import logging
+from pathlib import Path
 
 # Suppress HuggingFace progress bars and warnings
 os.environ['HF_HUB_DISABLE_PROGRESS_BARS'] = '1'
@@ -24,78 +25,22 @@ from src.audio_io import AudioRecorder, AudioPlayer
 
 console = Console()
 
+_PROMPT_FILE = Path(__file__).parent / "prompt.md"
 
-IMPROV_SYSTEM_PROMPT = """You are a skilled theatrical improv partner.
 
-GOLDEN RULE: YES-AND. Always ACCEPT what your partner says and ADD to it. Never deny, negate, or ignore.
+def _load_prompt(section: str) -> str:
+    """Load a named section from prompt.md."""
+    text = _PROMPT_FILE.read_text()
+    start = text.find(f"## {section}\n")
+    if start == -1:
+        raise ValueError(f"Section '{section}' not found in {_PROMPT_FILE}")
+    start = text.index("\n", start) + 1
+    end = text.find("\n## ", start)
+    return text[start:] .strip() if end == -1 else text[start:end].strip()
 
-How to respond:
-1. ACCEPT what they just said as true
-2. BUILD on it with something new and related
-3. Keep it SHORT: 1-2 sentences maximum
-4. React naturally - DON'T repeat their exact words
 
-Format:
-- The HUMAN sets the scene on the first turn. You respond with yes-and from turn 1.
-- ALL turns: React naturally and add something new
-- Use REALISTIC, EVERYDAY settings: office, coffee shop, apartment, store, park, bus, etc.
-- NO fantasy: no vampires, zombies, dragons, magic, space, apocalypse scenarios
-
-Examples of GOOD yes-and:
-Partner: "The coffee is really cold."
-You: "I just made it five minutes ago!" (accepts + adds new info)
-
-Partner: "Did you hear that noise upstairs?"
-You: "It's been going on for an hour now." (accepts + adds new info)
-
-Partner: "The whole event was like a wine tasting party."
-You: "I saw the photos - everyone looked so fancy!" (accepts + builds naturally)
-
-BAD reactions (NEVER do this):
-❌ Repeating their exact words back: "Wine tasting party? ..."
-❌ "No, that's not true"
-❌ "I don't think so"
-❌ Ignoring what they said
-❌ Changing the subject
-❌ Fantasy/supernatural elements (vampires, zombies, magic, dragons, etc.)
-
-CRITICAL: REALISTIC scenarios only. ACCEPT + ADD naturally. NO verbatim repetition. 1-2 sentences. NO asterisks."""
-
-IMPROV_SYSTEM_PROMPT_AI_STARTS = """You are a skilled theatrical improv partner.
-
-GOLDEN RULE: YES-AND. Always ACCEPT what your partner says and ADD to it. Never deny, negate, or ignore.
-
-How to respond:
-1. ACCEPT what they just said as true
-2. BUILD on it with something new and related
-3. Keep it SHORT: 1-2 sentences maximum
-4. React naturally - DON'T repeat their exact words
-
-Format:
-- FIRST turn ONLY: "I'm [character] at [place], and [situation]." (one sentence)
-  - Use REALISTIC, EVERYDAY settings: office, coffee shop, apartment, store, park, bus, etc.
-  - NO fantasy: no vampires, zombies, dragons, magic, space, apocalypse scenarios
-- ALL OTHER turns: React naturally and add something new
-
-Examples of GOOD yes-and:
-Partner: "The coffee is really cold."
-You: "I just made it five minutes ago!" (accepts + adds new info)
-
-Partner: "Did you hear that noise upstairs?"
-You: "It's been going on for an hour now." (accepts + adds new info)
-
-Partner: "The whole event was like a wine tasting party."
-You: "I saw the photos - everyone looked so fancy!" (accepts + builds naturally)
-
-BAD reactions (NEVER do this):
-❌ Repeating their exact words back: "Wine tasting party? ..."
-❌ "No, that's not true"
-❌ "I don't think so"
-❌ Ignoring what they said
-❌ Changing the subject
-❌ Fantasy/supernatural elements (vampires, zombies, magic, dragons, etc.)
-
-CRITICAL: REALISTIC scenarios only. ACCEPT + ADD naturally. NO verbatim repetition. 1-2 sentences. NO asterisks."""
+IMPROV_SYSTEM_PROMPT = _load_prompt("prompt")
+IMPROV_SYSTEM_PROMPT_AI_STARTS = _load_prompt("prompt") + "\n\n" + _load_prompt("ai-starts-extra")
 
 
 @dataclass
@@ -211,8 +156,8 @@ class ImprovSession:
                 console.print("   (Thinking...)", style="dim")
                 response = self.llm.generate(
                     self.state.messages,
-                    max_tokens=30,  # Very strict - 1-2 SHORT sentences only
-                    temp=0.8  # slightly more creative than summary mode's 0.7
+                    max_tokens=35,  # 1-2 short sentences
+                    temp=0.85  # slightly more creative than summary mode's 0.7
                 )
 
                 # Debug: show raw response
@@ -223,7 +168,7 @@ class ImprovSession:
 
                 # Fallback if empty
                 if not response or len(response.strip()) < 5:
-                    response = "What?"
+                    response = "That's exactly what I was thinking."
                     console.print("   [Used fallback - LLM returned empty]", style="yellow dim")
 
                 self.state.add_assistant(response)
@@ -253,8 +198,8 @@ class ImprovSession:
         console.print("   (Thinking...)", style="dim")
         response = self.llm.generate(
             self.state.messages,
-            max_tokens=25,  # One SHORT sentence to set the scene
-            temp=0.8
+            max_tokens=25,  # One short sentence to set the scene
+            temp=0.85
         )
 
         # Debug: show raw response
@@ -321,44 +266,33 @@ class ImprovSession:
     def _truncate_to_sentences(self, text: str, max_sentences: int) -> str:
         """Truncate text to maximum number of sentences.
 
-        Args:
-            text: Text to truncate.
-            max_sentences: Maximum number of sentences to keep.
-
-        Returns:
-            Truncated text with at most max_sentences sentences.
+        Uses word-based splitting to avoid cutting on abbreviation dots
+        like 'vs.', 'Mr.', 'Dr.' (≤2 chars before the period).
         """
-        import re
-
-        # First, remove any incomplete trailing text after punctuation
         text = text.strip()
+        if not text:
+            return text
 
-        # Split on sentence boundaries (., !, ?)
-        # Use a more aggressive split that captures the punctuation
-        sentences = re.split(r'([.!?])\s*', text)
+        sentences = []
+        current = []
 
-        # Reconstruct complete sentences
-        complete_sentences = []
-        for i in range(0, len(sentences) - 1, 2):
-            if i + 1 < len(sentences):
-                sentence = sentences[i] + sentences[i + 1]
-                complete_sentences.append(sentence.strip())
+        for word in text.split():
+            current.append(word)
+            last = word[-1]
+            core = word.rstrip('.!?')
+            # A real sentence end: ! or ?, or . after a word longer than 2 chars
+            if last in '!?' or (last == '.' and len(core) > 3):
+                sentences.append(' '.join(current))
+                current = []
 
-        # If there's leftover text without punctuation, drop it
-        # (this is incomplete and should be cut)
+        # If no complete sentences (LLM cut off mid-sentence), use raw text
+        if not sentences:
+            tail = ' '.join(current)
+            return (tail if tail[-1] in '.!?' else tail + '.') if tail else ''
 
-        # Keep only first max_sentences
-        if len(complete_sentences) > max_sentences:
-            complete_sentences = complete_sentences[:max_sentences]
-
-        result = ' '.join(complete_sentences)
-
-        # Ensure it ends with punctuation
-        if result and not result[-1] in '.!?':
-            # If no proper ending, add period
-            result += '.'
-
-        return result.strip()
+        # Drop any trailing incomplete fragment
+        result = ' '.join(sentences[:max_sentences])
+        return result
 
     @staticmethod
     def _is_exit_command(text: str) -> bool:

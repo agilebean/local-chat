@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Voice-to-voice theatrical improv partner using local MLX models."""
 import argparse
-from src.improv import ImprovSession
+from src.improv_loop import ImprovSession
 
 
 def main():
