@@ -20,12 +20,12 @@ class AudioRecorder:
         """
         self.sample_rate = sample_rate
         # Initialize WebRTC VAD
-        self.vad = webrtcvad.Vad(1)  # Mode 1 = balanced
+        self.vad = webrtcvad.Vad(0)  # Mode 0 = least aggressive, best for conversational speech
 
     def record_until_silence(
         self,
-        silence_duration: float = 0.8,
-        max_duration: float = 10.0
+        silence_duration: float = 1.5,
+        max_duration: float = 30.0
     ) -> np.ndarray:
         """Record from mic until silence detected using WebRTC VAD.
 
@@ -49,7 +49,9 @@ class AudioRecorder:
         recording = []
         speech_started = False
         silence_frames = 0
+        consecutive_non_speech = 0
         frames_needed_for_silence = int(silence_duration * 1000 / frame_duration_ms)
+        SPEECH_SMOOTHING_FRAMES = 3  # ignore non-speech bursts < 90ms (VAD false negatives)
 
         def callback(indata, frames, time_info, status):
             """Called for each audio block from the microphone."""
@@ -80,19 +82,30 @@ class AudioRecorder:
                     audio_int16 = (data.flatten() * 32767).astype(np.int16)
                     audio_bytes = audio_int16.tobytes()
 
+                    # RMS energy in int16 units — soft trailing speech still has energy
+                    # even when VAD misclassifies it as non-speech
+                    audio_rms = float(np.sqrt(np.mean(audio_int16.astype(np.float32) ** 2)))
+                    SILENCE_ENERGY_THRESHOLD = 400  # ~1.2% of int16 max; below this = true silence
+
                     # Use WebRTC VAD to detect speech
                     is_speech = self.vad.is_speech(audio_bytes, self.sample_rate)
 
-                    if is_speech:
-                        if not speech_started:
+                    # A frame counts as silence only if VAD AND energy both confirm it
+                    is_true_silence = not is_speech and audio_rms < SILENCE_ENERGY_THRESHOLD
+
+                    if is_speech or audio_rms >= SILENCE_ENERGY_THRESHOLD:
+                        if not speech_started and is_speech:
                             speech_started = True
+                        consecutive_non_speech = 0
                         silence_frames = 0  # Reset silence counter
-                    elif speech_started:
-                        # Only count silence after speech has started
-                        silence_frames += 1
-                        if silence_frames >= frames_needed_for_silence:
-                            print("   (Silence detected, stopping)")
-                            break
+                    elif speech_started and is_true_silence:
+                        consecutive_non_speech += 1
+                        # Only count as silence after 3 consecutive true-silence frames (~90ms)
+                        if consecutive_non_speech >= SPEECH_SMOOTHING_FRAMES:
+                            silence_frames += 1
+                            if silence_frames >= frames_needed_for_silence:
+                                print("   (Silence detected, stopping)")
+                                break
 
                 except queue.Empty:
                     continue
