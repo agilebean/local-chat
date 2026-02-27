@@ -36,6 +36,42 @@ How to respond:
 4. React naturally - DON'T repeat their exact words
 
 Format:
+- The HUMAN sets the scene on the first turn. You respond with yes-and from turn 1.
+- ALL turns: React naturally and add something new
+- Use REALISTIC, EVERYDAY settings: office, coffee shop, apartment, store, park, bus, etc.
+- NO fantasy: no vampires, zombies, dragons, magic, space, apocalypse scenarios
+
+Examples of GOOD yes-and:
+Partner: "The coffee is really cold."
+You: "I just made it five minutes ago!" (accepts + adds new info)
+
+Partner: "Did you hear that noise upstairs?"
+You: "It's been going on for an hour now." (accepts + adds new info)
+
+Partner: "The whole event was like a wine tasting party."
+You: "I saw the photos - everyone looked so fancy!" (accepts + builds naturally)
+
+BAD reactions (NEVER do this):
+❌ Repeating their exact words back: "Wine tasting party? ..."
+❌ "No, that's not true"
+❌ "I don't think so"
+❌ Ignoring what they said
+❌ Changing the subject
+❌ Fantasy/supernatural elements (vampires, zombies, magic, dragons, etc.)
+
+CRITICAL: REALISTIC scenarios only. ACCEPT + ADD naturally. NO verbatim repetition. 1-2 sentences. NO asterisks."""
+
+IMPROV_SYSTEM_PROMPT_AI_STARTS = """You are a skilled theatrical improv partner.
+
+GOLDEN RULE: YES-AND. Always ACCEPT what your partner says and ADD to it. Never deny, negate, or ignore.
+
+How to respond:
+1. ACCEPT what they just said as true
+2. BUILD on it with something new and related
+3. Keep it SHORT: 1-2 sentences maximum
+4. React naturally - DON'T repeat their exact words
+
+Format:
 - FIRST turn ONLY: "I'm [character] at [place], and [situation]." (one sentence)
   - Use REALISTIC, EVERYDAY settings: office, coffee shop, apartment, store, park, bus, etc.
   - NO fantasy: no vampires, zombies, dragons, magic, space, apocalypse scenarios
@@ -67,10 +103,11 @@ class ConversationState:
     """Tracks the conversation history for LLM context."""
     messages: list = field(default_factory=list)
     max_history: int = 20  # Keep last N exchanges to prevent context overflow
+    system_prompt: str = IMPROV_SYSTEM_PROMPT
 
     def __post_init__(self):
         """Initialize with system prompt."""
-        self.messages = [{"role": "system", "content": IMPROV_SYSTEM_PROMPT}]
+        self.messages = [{"role": "system", "content": self.system_prompt}]
 
     def add_user(self, text: str):
         """Add a user message to the conversation history."""
@@ -92,20 +129,25 @@ class ConversationState:
 class ImprovSession:
     """Orchestrates the real-time improv conversation loop."""
 
-    def __init__(self, voice: str = "ryan", ref_audio: Optional[str] = None):
+    def __init__(self, voice: Optional[str] = None, ref_audio: Optional[str] = None, ai_starts: bool = False, tts_backend: str = "kokoro"):
         """Initialize the improv session.
 
         Args:
-            voice: TTS voice preset to use (default: ryan).
-            ref_audio: Optional path to reference audio for voice cloning.
+            voice: TTS voice preset. Defaults to backend's default voice when None.
+            ref_audio: Optional path to reference audio for voice cloning (qwen3 only).
+            ai_starts: If True, the AI sets the scene on the first turn (default: False).
+            tts_backend: "qwen3" (default, supports voice cloning) or "kokoro" (faster).
         """
         self.voice = voice
         self.ref_audio = ref_audio
-        self.state = ConversationState()
+        self.ai_starts = ai_starts
+        self.tts_backend = tts_backend
+        prompt = IMPROV_SYSTEM_PROMPT_AI_STARTS if ai_starts else IMPROV_SYSTEM_PROMPT
+        self.state = ConversationState(system_prompt=prompt)
 
         # Initialize components (lazy-loaded)
         self.llm = MlxLlm()
-        self.tts = MlxTts()
+        self.tts = MlxTts(backend=tts_backend)
         self.stt = MlxStt()
         self.recorder = AudioRecorder()
         self.player = AudioPlayer()
@@ -115,19 +157,20 @@ class ImprovSession:
         console.print("\n🎭 Loading models for improv session...", style="cyan bold")
         console.print("   Loading LLM (Qwen3-4B-Instruct)...", style="dim")
         self.llm.load()
-        console.print("   Loading TTS (Qwen3-TTS)...", style="dim")
+        tts_label = "Kokoro-82M" if self.tts_backend == "kokoro" else "Qwen3-TTS"
+        console.print(f"   Loading TTS ({tts_label})...", style="dim")
         self.tts.load()
-        console.print("   Loading STT (Whisper)...", style="dim")
-        # STT model is loaded on first call by mlx_whisper, but we can mention it
+        console.print("   Loading STT (Parakeet 110M)...", style="dim")
+        self.stt.load()
         console.print("✓ All models loaded. Ready to improv!", style="green bold")
-        console.print("\n💡 Tip: Say 'end scene' or press Ctrl+C to exit\n", style="yellow dim")
+        console.print("\n💡 Tip: Say 'end scene', 'and scene', or press Ctrl+C to exit\n", style="yellow dim")
 
     def run(self):
         """Main conversation loop."""
         self.load_models()
 
-        # AI speaks first (greeting + scene suggestion)
-        self._ai_turn_initial()
+        if self.ai_starts:
+            self._ai_turn_initial()
 
         # Main loop
         while True:
@@ -320,8 +363,8 @@ class ImprovSession:
     @staticmethod
     def _is_exit_command(text: str) -> bool:
         """Check if user wants to end the session."""
-        exit_phrases = ["end scene", "scene", "stop", "quit", "exit", "goodbye", "bye"]
-        text_lower = text.lower().strip()
+        exit_phrases = ["end scene", "and scene", "scene", "stop", "quit", "exit", "goodbye", "bye"]
+        text_lower = text.lower().strip().rstrip(".,!?;:")
         return any(
             text_lower == phrase or text_lower.startswith(phrase + " ")
             for phrase in exit_phrases

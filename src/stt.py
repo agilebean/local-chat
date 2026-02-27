@@ -1,49 +1,63 @@
-"""Local Speech-to-Text using MLX Whisper."""
+"""Local Speech-to-Text using Parakeet TDT (MLX)."""
 import os
 os.environ['HF_HUB_DISABLE_PROGRESS_BARS'] = '1'
 
+import tempfile
 import numpy as np
+import soundfile as sf
 from typing import Optional
 
 
 class MlxStt:
-    """Wrapper around mlx-whisper for speech recognition.
+    """Wrapper around parakeet-mlx for speech recognition.
 
-    Uses Apple Silicon optimized Whisper models for fast, local STT.
+    Uses Parakeet TDT (Transducer architecture) — no fixed 30s window,
+    much lower latency than Whisper for short conversational speech.
     """
 
-    DEFAULT_MODEL = "mlx-community/whisper-tiny"
-    # whisper-tiny is fastest for real-time use
-    # This is the only model confirmed to work in mlx-community
+    DEFAULT_MODEL = "mlx-community/parakeet-tdt_ctc-110m"
 
     def __init__(self, model_name: Optional[str] = None):
         """Initialize the STT wrapper.
 
         Args:
             model_name: HuggingFace model ID or local path.
-                       Defaults to whisper-tiny (fastest available).
         """
         self.model_name = model_name or self.DEFAULT_MODEL
+        self._model = None
+
+    def load(self):
+        """Pre-load the model into memory."""
+        from parakeet_mlx import from_pretrained
+
+        # Re-enable progress bars for this download — first run fetches ~1.2GB
+        # and suppressing output makes it look like a hang.
+        prev = os.environ.pop('HF_HUB_DISABLE_PROGRESS_BARS', None)
+        try:
+            self._model = from_pretrained(self.model_name)
+        finally:
+            if prev is not None:
+                os.environ['HF_HUB_DISABLE_PROGRESS_BARS'] = prev
 
     def transcribe(self, audio: np.ndarray, sample_rate: int = 16000) -> str:
         """Transcribe audio numpy array to text.
 
         Args:
-            audio: Audio as float32 numpy array (mono).
-                  Whisper expects 16kHz, but will resample if needed.
+            audio: Audio as float32 numpy array (mono, 16kHz).
             sample_rate: Sample rate of the audio (default: 16000 Hz).
 
         Returns:
             Transcribed text string.
         """
-        import mlx_whisper
+        if self._model is None:
+            self.load()
 
-        # mlx_whisper.transcribe() accepts numpy arrays directly
-        # It also handles resampling internally if needed
-        result = mlx_whisper.transcribe(
-            audio,
-            path_or_hf_repo=self.model_name,
-            language="en"
-        )
+        with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as f:
+            tmp_path = f.name
 
-        return result["text"].strip()
+        try:
+            sf.write(tmp_path, audio, sample_rate)
+            result = self._model.transcribe(tmp_path)
+            return result.text.strip()
+        finally:
+            os.unlink(tmp_path)
