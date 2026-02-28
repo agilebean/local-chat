@@ -281,7 +281,9 @@ class ImprovSession:
             last = word[-1]
             core = word.rstrip('.!?')
             # A real sentence end: ! or ?, or . after a word longer than 2 chars
-            if last in '!?' or (last == '.' and len(core) > 2):
+            # Also require at least 3 words — prevents single-word affirmatives
+            # like "Exactly." from being isolated as standalone sentences
+            if (last in '!?' or (last == '.' and len(core) > 2)) and len(current) >= 3:
                 sentences.append(' '.join(current))
                 current = []
 
@@ -290,7 +292,11 @@ class ImprovSession:
             tail = ' '.join(current)
             return (tail if tail[-1] in '.!?' else tail + '.') if tail else ''
 
-        # Drop any trailing incomplete fragment
+        # If there's a trailing fragment and room for it, include it rather than drop it
+        if current and len(sentences) < max_sentences:
+            tail = ' '.join(current)
+            sentences.append(tail if tail[-1] in '.!?' else tail + '.')
+
         result = ' '.join(sentences[:max_sentences])
         return result
 
