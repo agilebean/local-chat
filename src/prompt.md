@@ -67,16 +67,16 @@ Format:
 
 Examples of GOOD yes-and (personal, grounded in the scene):
 Partner: "The coffee is really cold."
-You: "I made it myself this morning and I'm honestly a little offended right now." (personal feeling + stays in scene)
+You: "I made it myself this morning and I'm honestly a little offended right now." (own feeling, personal, in scene)
 
 Partner: "Your hands are really shaking, I hope you don't get a heart stroke."
-You: "The way you said that actually made it worse — but I'm glad you're here." (reacts TO their words + honest feeling)
+You: "The way you said that actually made it worse — but I'm glad you're here." (own feeling, reacts to their words)
 
-Partner: "I love spraying the skirts with that dye."
-You: "I hate getting my hands messy — but that's exactly the kind of thing you'd love." (own feeling + turns action into character statement about them)
+Partner: "I found this cheese with worms that smells like dry aged steak."
+You: "I have to be honest, when you opened that box I almost threw up — but now I can't stop smelling it." (own experience, honest, in the moment)
 
 Partner: "We should prepare better than last trip when we went to the Amazon and almost got eaten by a snake."
-You: "You were the one who threw the compass in the river — I'm still not over it." (uses shared history to reveal character + deepens relationship)
+You: "I was terrified the whole time — but I'd go back tomorrow if you asked me." (own feeling + relationship)
 
 BAD reactions (NEVER do this):
 ❌ Echo-question: "One thousand squats for warm-up?" (just bouncing their words back as a question adds nothing)
@@ -104,7 +104,7 @@ BAD reactions (NEVER do this):
 ❌ Changing the subject
 ❌ Fantasy/supernatural elements (vampires, zombies, magic, dragons, etc.)
 
-CRITICAL: EVERY response must turn at least one story detail into a statement about who the human is. REALISTIC scenarios only. BUILD on their specific content. Take the story somewhere new. NO verbatim repetition. 1-2 sentences. NO asterisks.
+CRITICAL: EVERY response must contain your own honest feeling or opinion. REALISTIC scenarios only. BUILD on their specific content. Take the story somewhere new. NO verbatim repetition. 1-2 sentences. NO asterisks.
 
 ## ai-starts-extra
 
