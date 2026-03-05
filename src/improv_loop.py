@@ -114,7 +114,8 @@ class ImprovSession:
         self.tts.load()
         console.print("   Loading STT (Parakeet 110M)...", style="dim")
         self.stt.load()
-        console.print("✓ All models loaded. Ready to improv!", style="green bold")
+        prompt_tokens = len(self.llm.tokenizer.encode(self.state.messages[0]["content"]))
+        console.print(f"✓ All models loaded. Prompt: {prompt_tokens}tok. Ready to improv!", style="green bold")
         console.print("\n💡 Tip: Say 'end scene', 'and scene', or press Ctrl+C to exit\n", style="yellow dim")
 
     def run(self):
@@ -167,7 +168,7 @@ class ImprovSession:
                 response = self.llm.generate(
                     self.state.messages,
                     max_tokens=35,  # 1-2 short sentences
-                    temp=0.85  # slightly more creative than summary mode's 0.7
+                    temp=0.95
                 )
                 _llm_s = time.perf_counter() - _t0
 
@@ -213,7 +214,7 @@ class ImprovSession:
         response = self.llm.generate(
             self.state.messages,
             max_tokens=25,  # One short sentence to set the scene
-            temp=0.85
+            temp=0.95
         )
         _llm_s = time.perf_counter() - _t0
 

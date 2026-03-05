@@ -95,7 +95,7 @@ class MlxLlm:
             enable_thinking=False,
         )
         self.last_prompt_tokens = len(self.tokenizer.encode(prompt))
-        sampler = make_sampler(temp=temp)
+        sampler = make_sampler(temp=temp, min_p=0.05, top_k=50)
         response = generate(
             self.model,
             self.tokenizer,

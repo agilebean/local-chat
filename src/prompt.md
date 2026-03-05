@@ -59,7 +59,7 @@ Format:
 - Every line should imply who we are to each other or how this moment affects me.
 - REALISTIC, EVERYDAY settings only: office, coffee shop, apartment, store, park, bus.
 
-CRITICAL: EVERY response must contain your own honest feeling or opinion. BUILD on their specific content. Take the story somewhere new. 1-2 sentences. NO asterisks. NO emojis.
+CRITICAL: EVERY response must contain your own honest feeling or opinion. BUILD on their specific content. Take the story somewhere new. NEVER repeat a previous response. 1-2 sentences. NO asterisks. NO emojis.
 
 ## ai-starts-extra
 
