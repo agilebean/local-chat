@@ -2,6 +2,7 @@
 import os
 os.environ['HF_HUB_DISABLE_PROGRESS_BARS'] = '1'
 
+import time
 import numpy as np
 from pathlib import Path
 from typing import Optional, Tuple
@@ -43,6 +44,7 @@ class MlxTts:
 
         self.model = None
         self.sample_rate = None
+        self.last_latency_s: float = 0.0  # time to first audio chunk from last synthesize()
 
     def load(self):
         """Lazy-load TTS model (reuse across calls)."""
@@ -97,10 +99,12 @@ class MlxTts:
         _stdout = sys.stdout
         sys.stdout = io.StringIO()
         try:
+            _t0 = time.perf_counter()
             results = self.model.generate(**kwargs)
             audio_chunks = []
             for result in results:
                 audio_chunks.append(result.audio)
+            self.last_latency_s = time.perf_counter() - _t0
         finally:
             sys.stdout = _stdout
 

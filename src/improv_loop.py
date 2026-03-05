@@ -9,10 +9,13 @@ os.environ['HF_HUB_DISABLE_PROGRESS_BARS'] = '1'
 os.environ['HF_HUB_DISABLE_SYMLINKS_WARNING'] = '1'
 warnings.filterwarnings('ignore', category=FutureWarning)
 warnings.filterwarnings('ignore', category=UserWarning)
+warnings.filterwarnings('ignore', message='words count mismatch')
 
-# Suppress huggingface_hub logging
+# Suppress huggingface_hub and phonemizer logging
 logging.getLogger('huggingface_hub').setLevel(logging.ERROR)
+logging.getLogger('phonemizer').setLevel(logging.ERROR)
 
+import time
 from dataclasses import dataclass, field
 from typing import Optional
 import numpy as np
@@ -74,7 +77,7 @@ class ConversationState:
 class ImprovSession:
     """Orchestrates the real-time improv conversation loop."""
 
-    def __init__(self, voice: Optional[str] = None, ref_audio: Optional[str] = None, ai_starts: bool = False, tts_backend: str = "kokoro"):
+    def __init__(self, voice: Optional[str] = None, ref_audio: Optional[str] = None, ai_starts: bool = False, tts_backend: str = "kokoro", llm_variant: str = "2b"):
         """Initialize the improv session.
 
         Args:
@@ -82,16 +85,19 @@ class ImprovSession:
             ref_audio: Optional path to reference audio for voice cloning (qwen3 only).
             ai_starts: If True, the AI sets the scene on the first turn (default: False).
             tts_backend: "qwen3" (default, supports voice cloning) or "kokoro" (faster).
+            llm_variant: LLM size — "0.8b", "2b" (default), "4b", or "qwen3".
         """
         self.voice = voice
         self.ref_audio = ref_audio
         self.ai_starts = ai_starts
         self.tts_backend = tts_backend
+        self.llm_variant = llm_variant
         prompt = IMPROV_SYSTEM_PROMPT_AI_STARTS if ai_starts else IMPROV_SYSTEM_PROMPT
         self.state = ConversationState(system_prompt=prompt)
 
         # Initialize components (lazy-loaded)
-        self.llm = MlxLlm()
+        from src.llm import MODEL_VARIANTS, _VLM_KEYS
+        self.llm = MlxLlm(model_path=MODEL_VARIANTS[llm_variant], use_vlm=(llm_variant in _VLM_KEYS))
         self.tts = MlxTts(backend=tts_backend)
         self.stt = MlxStt()
         self.recorder = AudioRecorder()
@@ -99,8 +105,9 @@ class ImprovSession:
 
     def load_models(self):
         """Pre-load all three models. Call once at startup."""
+        llm_label = "Qwen3-4B-Instruct" if self.llm_variant == "qwen3" else f"Qwen3.5-{self.llm_variant.upper()}"
         console.print("\n🎭 Loading models for improv session...", style="cyan bold")
-        console.print("   Loading LLM (Qwen3-4B-Instruct)...", style="dim")
+        console.print(f"   Loading LLM ({llm_label})...", style="dim")
         self.llm.load()
         tts_label = "Kokoro-82M" if self.tts_backend == "kokoro" else "Qwen3-TTS"
         console.print(f"   Loading TTS ({tts_label})...", style="dim")
@@ -135,7 +142,9 @@ class ImprovSession:
                     console.print("   [No audio detected - skipping turn]", style="yellow dim")
                     continue
 
+                _t0 = time.perf_counter()
                 user_text = self.stt.transcribe(audio)
+                _stt_s = time.perf_counter() - _t0
                 # Clean up obvious repetition errors from STT
                 user_text = self._clean_repetitions(user_text)
 
@@ -144,7 +153,7 @@ class ImprovSession:
                     console.print("   [Transcription unclear - try speaking louder]", style="yellow dim")
                     continue
 
-                console.print(f"   You: {user_text}", style="yellow")
+                console.print(f"   You: {user_text} [STT: {_stt_s:.2f}s]", style="yellow")
 
                 # 3. Check for exit commands
                 if self._is_exit_command(user_text):
@@ -154,17 +163,20 @@ class ImprovSession:
                 # 4. LLM generates response
                 self.state.add_user(user_text)
                 console.print("   (Thinking...)", style="dim")
+                _t0 = time.perf_counter()
                 response = self.llm.generate(
                     self.state.messages,
                     max_tokens=35,  # 1-2 short sentences
                     temp=0.85  # slightly more creative than summary mode's 0.7
                 )
+                _llm_s = time.perf_counter() - _t0
 
-                # Debug: show raw response
-                console.print(f"   [Raw: {len(response)} chars]", style="dim")
-
-                # Aggressively enforce 2 sentence maximum
+                raw_len = len(response)
                 response = self._truncate_to_sentences(response, max_sentences=2)
+                cut = raw_len - len(response)
+                gt = self.llm.last_gen_tokens
+                tps = gt / _llm_s if _llm_s > 0 else 0
+                console.print(f"   [{gt}tok {tps:.0f}tok/s | cut {cut}char | LLM: {_llm_s:.2f}s]", style="dim")
 
                 # Fallback if empty
                 if not response or len(response.strip()) < 5:
@@ -182,6 +194,7 @@ class ImprovSession:
                     voice=self.voice,
                     ref_audio=self.ref_audio
                 )
+                console.print(f"   [TTS: {self.tts.last_latency_s:.2f}s]", style="dim")
                 self.player.play(audio_out, sr)
 
             except KeyboardInterrupt:
@@ -196,17 +209,20 @@ class ImprovSession:
         """AI's opening turn -- establish base reality with one sentence."""
         console.print("\n[AI's turn]", style="bold cyan")
         console.print("   (Thinking...)", style="dim")
+        _t0 = time.perf_counter()
         response = self.llm.generate(
             self.state.messages,
             max_tokens=25,  # One short sentence to set the scene
             temp=0.85
         )
+        _llm_s = time.perf_counter() - _t0
 
-        # Debug: show raw response
-        console.print(f"   [Raw: {len(response)} chars]", style="dim")
-
-        # Enforce 1 sentence for the opening
+        raw_len = len(response)
         response = self._truncate_to_sentences(response, max_sentences=1)
+        cut = raw_len - len(response)
+        gt = self.llm.last_gen_tokens
+        tps = gt / _llm_s if _llm_s > 0 else 0
+        console.print(f"   [{gt}tok {tps:.0f}tok/s | cut {cut}char | LLM: {_llm_s:.2f}s]", style="dim")
 
         # Fallback if empty
         if not response or len(response.strip()) < 5:
@@ -223,6 +239,7 @@ class ImprovSession:
             voice=self.voice,
             ref_audio=self.ref_audio
         )
+        console.print(f"   [TTS: {self.tts.last_latency_s:.2f}s]", style="dim")
         self.player.play(audio_out, sr)
 
     def _strip_stage_directions(self, text: str) -> str:

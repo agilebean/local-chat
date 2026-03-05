@@ -20,11 +20,11 @@ class AudioRecorder:
         """
         self.sample_rate = sample_rate
         # Initialize WebRTC VAD
-        self.vad = webrtcvad.Vad(0)  # Mode 0 = least aggressive, best for conversational speech
+        self.vad = webrtcvad.Vad(2)  # Mode 2 = moderately aggressive, reduces noise false-positives
 
     def record_until_silence(
         self,
-        silence_duration: float = 1.5,
+        silence_duration: float = 0.8,
         max_duration: float = 30.0
     ) -> np.ndarray:
         """Record from mic until silence detected using WebRTC VAD.
@@ -85,7 +85,7 @@ class AudioRecorder:
                     # RMS energy in int16 units — soft trailing speech still has energy
                     # even when VAD misclassifies it as non-speech
                     audio_rms = float(np.sqrt(np.mean(audio_int16.astype(np.float32) ** 2)))
-                    SILENCE_ENERGY_THRESHOLD = 400  # ~1.2% of int16 max; below this = true silence
+                    SILENCE_ENERGY_THRESHOLD = 150  # ~0.5% of int16 max; below this = true silence
 
                     # Use WebRTC VAD to detect speech
                     is_speech = self.vad.is_speech(audio_bytes, self.sample_rate)

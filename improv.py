@@ -17,11 +17,13 @@ def main():
                         help="Path to voice sample for cloning (.wav/.mp3, qwen3 only)")
     parser.add_argument("--tts", default="kokoro", choices=["qwen3", "kokoro"],
                         help="TTS backend: kokoro (default, fast 82M params) or qwen3 (supports voice cloning)")
+    parser.add_argument("--llm", default="2b", choices=["0.8b", "2b", "4b", "qwen3"],
+                        help="LLM variant: 0.8b, 2b (default), 4b (all Qwen3.5 MLX-4bit), or qwen3 (Qwen3-4B-Instruct-2507)")
     parser.add_argument("--ai-starts", action="store_true",
                         help="AI sets the scene on the first turn (default: human starts)")
     args = parser.parse_args()
 
-    session = ImprovSession(voice=args.voice, ref_audio=args.voice_sample, ai_starts=args.ai_starts, tts_backend=args.tts)
+    session = ImprovSession(voice=args.voice, ref_audio=args.voice_sample, ai_starts=args.ai_starts, tts_backend=args.tts, llm_variant=args.llm)
     session.run()
 
 
