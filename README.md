@@ -163,6 +163,51 @@ The silence clock only starts after you begin speaking — background noise befo
 - **AI occasionally breaks scene rules** — the LLM may introduce fantasy elements or repeat words despite prompt constraints
 - **NeuTTS gaps during slow generation** — if the model generates slower than real-time on your hardware, brief silence gaps may appear between audio chunks
 
+## Removing NeuTTS
+
+NeuTTS is optional and self-contained. To remove it cleanly:
+
+**1. Delete the sample reference files:**
+```bash
+rm -rf samples/
+```
+
+**2. Uninstall the packages:**
+```bash
+pip uninstall neutts onnxruntime llama-cpp-python
+```
+
+**3. Remove from `requirements.txt`** — delete these lines:
+```
+neutts>=0.1.0
+onnxruntime>=1.20.0
+```
+
+**4. Remove from `src/tts.py`** — delete:
+- `NEUTTS_VOICES`, `NEUTTS_DEFAULT_VOICE`, `_NEUTTS_SAMPLES_DIR` constants
+- The entire `NeuTtsTts` class
+
+**5. Remove from `src/improv_loop.py`** — delete:
+- `NeuTtsTts` from the import on line 26
+- The `else NeuTtsTts()` branch in `__init__`
+- The `tts_label` neutts-nano branch in `load_models()`
+
+**6. Remove from `improv.py`** — delete:
+- `from src.tts import NEUTTS_VOICES`
+- The `--tts` argument
+- The auto-detect block (`if args.voice in NEUTTS_VOICES`)
+- The `tts_backend` arg from `ImprovSession()`
+
+**7. Remove from `README.md`** — delete:
+- Installation step 3 (NeuTTS backend)
+- First Run table rows for neutts-nano and neucodec
+- Usage examples with `-v jo` / `-v dave`
+- `--tts` row from CLI Options table
+- NeuTTS Nano voice presets section
+- NeuTTS row from Models table
+- NeuTTS Known Issue
+- This entire "Removing NeuTTS" section
+
 ## Exit
 
 Say **"end scene"**, **"and scene"**, or press Ctrl+C.
