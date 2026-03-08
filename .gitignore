@@ -1,5 +1,7 @@
 .venv/
 __pycache__/
+.memory/
+CLAUDE.md
 *.pyc
 *.pyo
 *.egg-info/
