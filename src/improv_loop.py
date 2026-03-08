@@ -22,7 +22,7 @@ import numpy as np
 from rich.console import Console
 
 from src.llm import MlxLlm
-from src.tts import MlxTts
+from src.tts import MlxTts, NeuTtsTts
 from src.stt import MlxStt
 from src.audio_io import AudioRecorder, AudioPlayer
 
@@ -77,28 +77,26 @@ class ConversationState:
 class ImprovSession:
     """Orchestrates the real-time improv conversation loop."""
 
-    def __init__(self, voice: Optional[str] = None, ref_audio: Optional[str] = None, ai_starts: bool = False, tts_backend: str = "kokoro", llm_variant: str = "2b"):
+    def __init__(self, voice: Optional[str] = None, ai_starts: bool = False, llm_variant: str = "2b", tts_backend: str = "kokoro"):
         """Initialize the improv session.
 
         Args:
             voice: TTS voice preset. Defaults to backend's default voice when None.
-            ref_audio: Optional path to reference audio for voice cloning (qwen3 only).
             ai_starts: If True, the AI sets the scene on the first turn (default: False).
-            tts_backend: "qwen3" (default, supports voice cloning) or "kokoro" (faster).
             llm_variant: LLM size — "0.8b", "2b" (default), "4b", or "qwen3".
+            tts_backend: TTS engine — "kokoro" (default) or "neutts-nano".
         """
         self.voice = voice
-        self.ref_audio = ref_audio
         self.ai_starts = ai_starts
-        self.tts_backend = tts_backend
         self.llm_variant = llm_variant
+        self.tts_backend = tts_backend
         prompt = IMPROV_SYSTEM_PROMPT_AI_STARTS if ai_starts else IMPROV_SYSTEM_PROMPT
         self.state = ConversationState(system_prompt=prompt)
 
         # Initialize components (lazy-loaded)
         from src.llm import MODEL_VARIANTS, _VLM_KEYS
         self.llm = MlxLlm(model_path=MODEL_VARIANTS[llm_variant], use_vlm=(llm_variant in _VLM_KEYS))
-        self.tts = MlxTts(backend=tts_backend)
+        self.tts = MlxTts() if tts_backend == "kokoro" else NeuTtsTts()
         self.stt = MlxStt()
         self.recorder = AudioRecorder()
         self.player = AudioPlayer()
@@ -106,10 +104,10 @@ class ImprovSession:
     def load_models(self):
         """Pre-load all three models. Call once at startup."""
         llm_label = "Qwen3-4B-Instruct" if self.llm_variant == "qwen3" else f"Qwen3.5-{self.llm_variant.upper()}"
+        tts_label = "NeuTTS-Nano" if self.tts_backend == "neutts-nano" else "Kokoro-82M"
         console.print("\n🎭 Loading models for improv session...", style="cyan bold")
         console.print(f"   Loading LLM ({llm_label})...", style="dim")
         self.llm.load()
-        tts_label = "Kokoro-82M" if self.tts_backend == "kokoro" else "Qwen3-TTS"
         console.print(f"   Loading TTS ({tts_label})...", style="dim")
         self.tts.load()
         console.print("   Loading STT (Parakeet 110M)...", style="dim")
@@ -190,13 +188,12 @@ class ImprovSession:
                 # 5. TTS speaks the response (strip out stage directions)
                 console.print("   (Speaking...)", style="dim")
                 speech_text = self._strip_stage_directions(response)
-                audio_out, sr = self.tts.synthesize(
-                    speech_text,
-                    voice=self.voice,
-                    ref_audio=self.ref_audio
-                )
-                console.print(f"   [TTS: {self.tts.last_latency_s:.2f}s]", style="dim")
-                self.player.play(audio_out, sr)
+                _tts_inline = getattr(self.tts, "streams_inline", False)
+                _tts_cb = (lambda lat: console.print(f"   [TTS: {lat:.2f}s]", style="dim")) if _tts_inline else None
+                audio_out, sr = self.tts.synthesize(speech_text, voice=self.voice, on_first_chunk=_tts_cb)
+                if not _tts_inline:
+                    console.print(f"   [TTS: {self.tts.last_latency_s:.2f}s]", style="dim")
+                    self.player.play(audio_out, sr)
 
             except KeyboardInterrupt:
                 console.print("\n\n🎬 Scene! (Ctrl+C) Great session!", style="green bold")
@@ -235,13 +232,12 @@ class ImprovSession:
 
         console.print("   (Speaking...)", style="dim")
         speech_text = self._strip_stage_directions(response)
-        audio_out, sr = self.tts.synthesize(
-            speech_text,
-            voice=self.voice,
-            ref_audio=self.ref_audio
-        )
-        console.print(f"   [TTS: {self.tts.last_latency_s:.2f}s]", style="dim")
-        self.player.play(audio_out, sr)
+        _tts_inline = getattr(self.tts, "streams_inline", False)
+        _tts_cb = (lambda lat: console.print(f"   [TTS: {lat:.2f}s]", style="dim")) if _tts_inline else None
+        audio_out, sr = self.tts.synthesize(speech_text, voice=self.voice, on_first_chunk=_tts_cb)
+        if not _tts_inline:
+            console.print(f"   [TTS: {self.tts.last_latency_s:.2f}s]", style="dim")
+            self.player.play(audio_out, sr)
 
     def _strip_stage_directions(self, text: str) -> str:
         """Remove stage directions in asterisks from text before TTS.

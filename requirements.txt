@@ -10,6 +10,10 @@ sounddevice>=0.4.6
 soundfile>=0.12.0
 webrtcvad>=2.0.10
 
+# NeuTTS (on Apple Silicon install with: CMAKE_ARGS="-DGGML_METAL=OFF -DGGML_BLAS=ON -DGGML_BLAS_VENDOR=Apple" pip install "neutts[llama]")
+neutts>=0.1.0
+onnxruntime>=1.20.0  # ONNX codec decoder for lower NeuTTS latency
+
 # Utilities
 numpy>=1.24.0
 rich>=13.0.0

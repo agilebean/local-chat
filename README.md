@@ -8,7 +8,7 @@ Real-time voice-to-voice theatrical improv partner using local MLX models (Apple
 - Theatrical improv principles (yes-and, realistic scenarios only)
 - All local models — no API calls, no internet required after setup
 - Human or AI can start the scene
-- Two TTS backends: Kokoro 82M (default, fast) or Qwen3-TTS (voice cloning)
+- Two TTS backends: Kokoro 82M (fast, preset voices) or NeuTTS Nano (120M, voice cloning, real-time streaming)
 
 ## Requirements
 
@@ -32,7 +32,21 @@ source .venv/bin/activate
 pip install -r requirements.txt
 ```
 
-### 3. LLM via LM Studio
+### 3. NeuTTS backend (optional — only needed for `--tts neutts-nano`)
+
+Install `llama-cpp-python` with Metal acceleration (Apple Silicon):
+
+```bash
+CMAKE_ARGS="-DGGML_METAL=on" pip install llama-cpp-python
+```
+
+Then install neutts:
+
+```bash
+pip install "neutts[llama]"
+```
+
+### 4. LLM via LM Studio
 
 Download the LLM model in LM Studio before running:
 
@@ -41,19 +55,19 @@ Download the LLM model in LM Studio before running:
 
 ## First Run
 
-On first run, TTS and STT models are automatically downloaded from HuggingFace:
+On first run, models are automatically downloaded from HuggingFace:
 
-| Model | Size |
-|-------|------|
-| Kokoro-82M-bf16 (TTS) | ~355 MB |
-| parakeet-tdt_ctc-110m (STT) | ~437 MB |
-
-Total ~800 MB, downloaded once and cached locally.
+| Model | Size | When |
+|-------|------|------|
+| Kokoro-82M-bf16 (TTS) | ~355 MB | always |
+| parakeet-tdt_ctc-110m (STT) | ~437 MB | always |
+| neutts-nano-q4-gguf (TTS backbone) | ~500 MB | `--tts neutts-nano` only |
+| neucodec-onnx-decoder (TTS codec) | ~50 MB | `--tts neutts-nano` only |
 
 ## Usage
 
 ```bash
-# Default: Kokoro TTS, human starts the scene
+# Default: human starts the scene (Kokoro TTS)
 python improv.py
 
 # AI sets the scene on the first turn
@@ -62,18 +76,32 @@ python improv.py --ai-starts
 # Choose a Kokoro voice
 python improv.py -v am_adam
 
-# Switch to Qwen3-TTS (supports voice cloning)
-python improv.py --tts qwen3
-python improv.py --tts qwen3 -v ryan
-python improv.py --tts qwen3 --voice-sample my_voice.wav
+# Use NeuTTS Nano — voice name auto-selects backend
+python improv.py -v jo
+python improv.py -v dave
+
+# Explicit backend + voice
+python improv.py --tts neutts-nano -v jo
+
+# Different LLM size
+python improv.py --llm 4b
 
 # Combine options
-python improv.py --tts qwen3 --ai-starts -v serena
+python improv.py --ai-starts -v am_adam --llm 4b
 ```
+
+## CLI Options
+
+| Flag | Default | Description |
+|------|---------|-------------|
+| `--tts` | `kokoro` | TTS backend: `kokoro` or `neutts-nano` |
+| `-v / --voice` | backend default | Voice preset (see below). NeuTTS voice names auto-select `--tts neutts-nano`. |
+| `--llm` | `2b` | LLM size: `0.8b`, `2b`, `4b`, `qwen3` |
+| `--ai-starts` | off | AI sets the scene on the first turn |
 
 ## Voice Presets
 
-**Kokoro (default TTS):**
+### Kokoro (`--tts kokoro`, default)
 
 | Code | Description |
 |------|-------------|
@@ -89,18 +117,31 @@ python improv.py --tts qwen3 --ai-starts -v serena
 | `bm_george` | British Male |
 | `bm_lewis` | British Male |
 
-**Qwen3-TTS (`--tts qwen3`):**
+### NeuTTS Nano (`--tts neutts-nano`)
 
-`serena` `vivian` `uncle_fu` `ryan` `aiden` `ono_anna` `sohee` `eric` `dylan`
+| Code | Language | Gender |
+|------|----------|--------|
+| `jo` | English | Female (default) |
+| `dave` | English | Male |
+| `greta` | German | Female |
+| `juliette` | French | Female |
+| `mateo` | Spanish | Male |
+
+Pre-encoded reference codes are stored in `samples/`. Passing any NeuTTS voice name auto-selects `--tts neutts-nano`, so `-v jo` is sufficient.
 
 ## Models
 
 | Component | Model | Size | Why |
 |-----------|-------|------|-----|
-| LLM | Qwen3-4B-Instruct-2507-MLX-4bit | 2.1 GB | MLX-optimized port of Qwen3-4B for Apple Silicon |
-| TTS (default) | mlx-community/Kokoro-82M-bf16 | 355 MB | Faster than Qwen3-TTS; 82M params vs 600M |
-| TTS (optional) | mlx-community/Qwen3-TTS-12Hz-0.6B-CustomVoice-8bit | ~600 MB | Higher quality, supports voice cloning |
-| STT | mlx-community/parakeet-tdt_ctc-110m | 437 MB | Lightweight variant of NVIDIA Parakeet 0.6B (2.3GB); no fixed 30s window (Whisper's bottleneck) |
+| LLM (`--llm 0.8b`) | mlx-community/Qwen3.5-0.8B-MLX-4bit | 622 MB | Fastest option |
+| LLM (`--llm 2b`, default) | mlx-community/Qwen3.5-2B-MLX-4bit | 1.6 GB | Good balance of speed and quality |
+| LLM (`--llm 4b`) | mlx-community/Qwen3.5-4B-MLX-4bit | 2.9 GB | Highest quality Qwen3.5 variant |
+| LLM (`--llm qwen3`) | lmstudio-community/Qwen3-4B-Instruct-2507-MLX-4bit | 2.1 GB | MLX-optimized Qwen3-4B for Apple Silicon |
+| TTS (`--tts kokoro`, default) | mlx-community/Kokoro-82M-bf16 | 345 MB | 82M params, preset voices, fast MLX inference |
+| TTS (`--tts neutts-nano`) | neuphonic/neutts-nano-q4-gguf + neuphonic/neucodec-onnx-decoder | ~550 MB | 120M active params (229M total), voice cloning, real-time streaming via llama.cpp + ONNX codec |
+| STT | mlx-community/parakeet-tdt_ctc-110m | 437 MB | Lightweight NVIDIA Parakeet variant; no fixed 30s window (Whisper's bottleneck) |
+
+> **Note (LLM):** The Qwen3.5 `0.8b`/`2b`/`4b` weight files are multimodal checkpoints. Only the language model portion is used — vision tower weights are silently skipped at load time via `strict=False`.
 
 ## Recording behavior
 
@@ -108,10 +149,10 @@ Uses WebRTC VAD (Voice Activity Detection) for turn detection:
 
 | Setting | Value | Config param | Notes |
 |---------|-------|--------------|-------|
-| VAD mode | 1 (balanced) | `Vad(1)` in `audio_io.py:23` | Range 0–3; higher = more aggressive silence detection |
+| VAD mode | 2 (moderately aggressive) | `Vad(2)` in `audio_io.py:23` | Range 0–3; higher = more aggressive silence detection |
 | Frame size | 30ms | fixed | Required by WebRTC VAD at 16kHz |
 | Silence threshold | **0.8s** | `silence_duration` in `audio_io.py:27` | Stops recording after this much continuous silence |
-| Max duration | **10s** | `max_duration` in `audio_io.py:28` | Hard cap per turn regardless of speech |
+| Max duration | **30s** | `max_duration` in `audio_io.py:28` | Hard cap per turn regardless of speech |
 
 The silence clock only starts after you begin speaking — background noise before your turn doesn't trigger early cutoff.
 
@@ -119,8 +160,8 @@ The silence clock only starts after you begin speaking — background noise befo
 
 - **VAD cuts off mid-sentence** — the 0.8s silence threshold may stop recording if you pause between words; lower `silence_duration` in `audio_io.py:27` if this is frequent
 - **Parakeet 110M accuracy** — the 110M model trades accuracy for speed vs the full 0.6B (2.3GB); it occasionally misrecognises uncommon words
-- **Voice cloning ignored with Kokoro** — `--voice-sample` is silently skipped when using the default Kokoro backend; use `--tts qwen3 --voice-sample` instead
 - **AI occasionally breaks scene rules** — the LLM may introduce fantasy elements or repeat words despite prompt constraints
+- **NeuTTS gaps during slow generation** — if the model generates slower than real-time on your hardware, brief silence gaps may appear between audio chunks
 
 ## Exit
 
