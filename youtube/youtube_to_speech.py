@@ -117,7 +117,9 @@ def main(argv: list[str] | None = None) -> int:
         elif is_url(inp):
             video = get_video_transcript(inp)
             transcript = video.transcript
-            title = video.video_id
+            # Use the scraper's title (e.g. \"Video_<id>\") rather than the raw
+            # video ID so the folder name is a short, readable slug.
+            title = video.title
         else:
             console.print("Input is neither a valid path nor a URL.", style="red")
             return 1
@@ -130,7 +132,25 @@ def main(argv: list[str] | None = None) -> int:
         console.print("\n📝 Summary:\n", style="bold")
         console.print(summary + "\n", style="white")
 
-        short_title = "".join(c if c.isalnum() or c in "-_" else "_" for c in title)[:20]
+        # Folder name: 15–20 chars of a sanitized title, cut on whole words
+        # where possible. Non-alphanumerics become underscores.
+        sanitized = "".join(c if c.isalnum() else "_" for c in title)
+        words = [w for w in sanitized.split("_") if w]
+        max_len = 20
+        target_min = 15
+        slug = ""
+        for w in words:
+            candidate = (slug + "_" + w) if slug else w
+            if len(candidate) > max_len:
+                break
+            slug = candidate
+        if not slug:
+            slug = sanitized[:max_len]
+        elif len(slug) < target_min and len(sanitized) > len(slug):
+            # Pad up to target_min if we ended up very short
+            extra = sanitized[len(slug):target_min]
+            slug = (slug + extra).rstrip("_")
+        short_title = slug
         output_dir = Path("output") / short_title
 
         synthesize_speech(summary, output_dir, voice=args.voice)

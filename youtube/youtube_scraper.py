@@ -5,6 +5,8 @@ from typing import Optional
 
 from youtube_transcript_api import YouTubeTranscriptApi
 from youtube_transcript_api._errors import TranscriptsDisabled, NoTranscriptFound
+import requests
+import html
 from rich.console import Console
 
 
@@ -82,9 +84,21 @@ def get_video_transcript(video_url: str) -> YouTubeVideo:
 
         video_url_clean = f"https://www.youtube.com/watch?v={video_id}"
 
+        # Try to fetch the actual YouTube title for nicer folder names.
+        try:
+            resp = requests.get(video_url_clean, timeout=5)
+            m = re.search(r"<title>(.*?)</title>", resp.text, re.IGNORECASE | re.DOTALL)
+            if m:
+                raw_title = html.unescape(m.group(1))
+                raw_title = raw_title.replace("- YouTube", "").strip()
+            else:
+                raw_title = video_id
+        except Exception:
+            raw_title = video_id
+
         return YouTubeVideo(
             video_id=video_id,
-            title=f"Video_{video_id}",
+            title=raw_title,
             transcript=transcript_text,
             url=video_url_clean,
         )
