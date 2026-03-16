@@ -11,9 +11,12 @@ warnings.filterwarnings('ignore', category=FutureWarning)
 warnings.filterwarnings('ignore', category=UserWarning)
 warnings.filterwarnings('ignore', message='words count mismatch')
 
-# Suppress huggingface_hub and phonemizer logging
+# Suppress huggingface_hub (and phonemizer if present) logging
 logging.getLogger('huggingface_hub').setLevel(logging.ERROR)
-logging.getLogger('phonemizer').setLevel(logging.ERROR)
+try:
+    logging.getLogger('phonemizer').setLevel(logging.ERROR)
+except Exception:
+    pass
 
 import time
 from dataclasses import dataclass, field
@@ -22,7 +25,7 @@ import numpy as np
 from rich.console import Console
 
 from src.llm import MlxLlm
-from src.tts import MlxTts, NeuTtsTts
+from src.tts import MlxTts
 from src.stt import MlxStt
 from src.audio_io import AudioRecorder, AudioPlayer
 
@@ -84,7 +87,7 @@ class ImprovSession:
             voice: TTS voice preset. Defaults to backend's default voice when None.
             ai_starts: If True, the AI sets the scene on the first turn (default: False).
             llm_variant: LLM size — "0.8b", "2b" (default), "4b", or "qwen3".
-            tts_backend: TTS engine — "kokoro" (default) or "neutts-nano".
+            tts_backend: TTS engine (kokoro only).
         """
         self.voice = voice
         self.ai_starts = ai_starts
@@ -96,7 +99,7 @@ class ImprovSession:
         # Initialize components (lazy-loaded)
         from src.llm import MODEL_VARIANTS, _VLM_KEYS
         self.llm = MlxLlm(model_path=MODEL_VARIANTS[llm_variant], use_vlm=(llm_variant in _VLM_KEYS))
-        self.tts = MlxTts() if tts_backend == "kokoro" else NeuTtsTts()
+        self.tts = MlxTts()
         self.stt = MlxStt()
         self.recorder = AudioRecorder()
         self.player = AudioPlayer()
@@ -104,7 +107,7 @@ class ImprovSession:
     def load_models(self):
         """Pre-load all three models. Call once at startup."""
         llm_label = "Qwen3-4B-Instruct" if self.llm_variant == "qwen3" else f"Qwen3.5-{self.llm_variant.upper()}"
-        tts_label = "NeuTTS-Nano" if self.tts_backend == "neutts-nano" else "Kokoro-82M"
+        tts_label = "Kokoro-82M"
         console.print("\n🎭 Loading models for improv session...", style="cyan bold")
         console.print(f"   Loading LLM ({llm_label})...", style="dim")
         self.llm.load()
