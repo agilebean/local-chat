@@ -135,3 +135,7 @@ The silence clock only starts after you begin speaking — background noise befo
 ## Exit
 
 Say **"end scene"**, **"and scene"**, or press Ctrl+C.
+
+## YouTube helper (optional)
+
+The `youtube/youtube_to_speech.py` helper in this repo is a thin wrapper that calls the original\n`talk_to_tone` project in a separate `talk_to_tone` environment. A few caveats:\n\n- **Transcripts and VPNs**: If you see an error like:\n+\n+  > Could not retrieve a transcript for the video ... YouTube is blocking requests from your IP\n+\n+  then YouTube is rejecting `youtube-transcript-api` requests from your IP (often due to a VPN or\n+  unusual traffic). Disable your VPN or switch networks, or pass a local `.txt` / `.md` transcript\n+  file instead of a YouTube URL.\n+- **Kokoro errors in YouTube helper**: If Kokoro works in improv (`improv.py`) but the YouTube\n+  helper prints `Model type kokoro not supported for tts`, that error is coming from the\n+  **`talk_to_tone` env**, which may have an older `mlx-audio` without Kokoro support. Fix it with:\n+\n+  ```bash\n+  mamba activate talk_to_tone\n+  pip install -U \"mlx-audio>=0.4.1\"\n+  ```\n+
