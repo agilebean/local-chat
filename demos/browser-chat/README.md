@@ -14,7 +14,7 @@ starts, and your browser opens to the demo.
 ### Bash alias (Mac/Linux)
 
 If `~/.bash_aliases` is sourced from your shell, the `browserchat` alias
-goes to this folder, activates the `improv` mamba env, and launches the
+goes to this folder, activates the `localai` mamba env, and launches the
 demo in one step:
 
 ```bash
@@ -24,13 +24,13 @@ browserchat
 ### Any platform (manual)
 
 ```bash
-# With Kokoro TTS (run inside the improv env):
-mamba activate improv
-cd improv/demos/browser-chat
+# With Kokoro TTS (run inside the localai env):
+mamba activate localai
+cd local-chat/demos/browser-chat
 python server.py
 
-# Or, browser-only TTS (no improv env needed):
-cd improv/demos/browser-chat
+# Or, browser-only TTS (no localai env needed):
+cd local-chat/demos/browser-chat
 python3 server.py
 ```
 
@@ -69,8 +69,8 @@ demos/browser-chat/                  ~30 KB total
 - **TTS pulldown**: choose between
   - **Browser** (default) — native `SpeechSynthesis`, works everywhere,
   zero setup.
-  - **Kokoro 82M (improv backend)** — high-quality MLX TTS from the parent
-  improv project. Auto-enabled when the server runs inside the `improv`
+  - **Kokoro 82M (localai backend)** — high-quality MLX TTS from the parent
+  local-chat project. Auto-enabled when the server runs inside the `localai`
   mamba env; auto-disabled and grayed out otherwise.
 - **Voice pulldown** (Kokoro only): 11 preset voices (`af_heart`, `af_bella`,
 `am_adam`, `bf_emma`, etc.).
@@ -91,7 +91,7 @@ exposes two extra endpoints:
 
 This means there is **one server, two modes**:
 
-- Improv env active → both TTS engines work.
+- localai env active → both TTS engines work.
 - Plain `python3 server.py` → static + Browser TTS only; Kokoro entry is
 shown in the dropdown as "Kokoro (backend not running)" and disabled.
 
@@ -111,7 +111,7 @@ Canonical prompts live one level up at `[../../prompts/](../../prompts/)`,
 shared with the Python improv loop. `friend.txt` here is a synced bundle so
 the demo is self-contained when zipped and shared with students.
 
-To re-sync after editing the canonical prompt (run from the improv repo root):
+To re-sync after editing the canonical prompt (run from the local-chat repo root):
 
 ```bash
 python3 -c "from src.prompts import load_prompt; print(load_prompt('friend','system'))" \

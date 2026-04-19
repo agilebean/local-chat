@@ -155,7 +155,7 @@
     <div class="controls">
       <select id="tts" title="TTS engine">
         <option value="browser">TTS: Browser (built-in)</option>
-        <option value="kokoro" disabled>TTS: Kokoro (improv backend)</option>
+        <option value="kokoro" disabled>TTS: Kokoro (localai backend)</option>
       </select>
       <select id="voice" class="hidden" title="Kokoro voice"></select>
       <label><input type="checkbox" id="speak" checked /> speak replies</label>
@@ -236,7 +236,7 @@
         const kokoroOption = ttsSel.querySelector('option[value="kokoro"]');
         if (kokoroAvailable) {
           kokoroOption.disabled = false;
-          kokoroOption.textContent = "TTS: Kokoro 82M (improv backend)";
+          kokoroOption.textContent = "TTS: Kokoro 82M (localai backend)";
           populateVoices(h.voices, h.default_voice, h.voice_descriptions || {});
         } else {
           kokoroOption.textContent = "TTS: Kokoro (backend not running)";

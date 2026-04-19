@@ -12,12 +12,12 @@ So: **misaki[en]**, **spacy**, and **num2words** are all required for the app’
 
 ## Python version note
 
-- On **Python 3.14**, spacy can hit a pydantic v1 compatibility issue (`ConfigError: unable to infer type for attribute "REGEX"`). If you see that, use **Python 3.10–3.12** for this project (e.g. `mamba create -n improv python=3.12`).
+- On **Python 3.14**, spacy can hit a pydantic v1 compatibility issue (`ConfigError: unable to infer type for attribute "REGEX"`). If you see that, use **Python 3.10–3.12** for this project (e.g. `mamba create -n localai python=3.12`).
 - **misaki** 0.9.x on PyPI currently targets Python &lt;3.13; if you are on 3.14 you may have 0.7.x and the same spacy/pydantic issue above applies.
 
 ## How to verify
 
-From the repo root with the improv env activated:
+From the repo root with the localai env activated:
 
 ```bash
 python scripts/check_imports.py
