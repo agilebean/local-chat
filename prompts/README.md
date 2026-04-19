@@ -1,7 +1,7 @@
 # Prompts
 
 Single source of truth for every system prompt used by `improv` and the
-sibling browser demo (`demos/browser-chat/`). Pure data — no code lives
+sibling browser demo (`browser-chat/`). Pure data — no code lives
 here. The Python loader is `src/prompts.py`.
 
 ## Layout

@@ -60,7 +60,7 @@ def resolve_input(inp: str) -> tuple[str, str]:
     Only calls the youtube module when the input is actually a URL.
     """
     if is_url(inp):
-        from youtube.youtube_scraper import get_video_transcript
+        from src.youtube_scraper import get_video_transcript
         video = get_video_transcript(inp)
         return video.transcript, video.title
     path = Path(inp)
@@ -197,7 +197,7 @@ def generate_background_music(
     prompt: str, output_path: Path, duration_seconds: float, provider: str = "mlx",
 ) -> float:
     """Generate instrumental music via the chosen provider (mlx or suno_org)."""
-    from src.music import get_music_generator
+    from music import get_music_generator
     return get_music_generator(provider).generate(
         prompt=prompt, output_path=output_path,
         duration=duration_seconds, instrumental=True,
@@ -297,7 +297,7 @@ def generate_song(
     Topic is capped at 200 chars to stay inside Suno's prompt budget.
     """
     _load_env_file()
-    from src.music import get_music_generator
+    from music import get_music_generator
 
     style = genre or "pop"
     topic = f"A {style} song about: {summary}"

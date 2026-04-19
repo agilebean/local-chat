@@ -52,7 +52,7 @@ Exit a scene by saying **"end scene"**, **"and scene"**, or pressing Ctrl+C.
 
 ### Browser Chat
 
-`[demos/browser-chat/](demos/browser-chat/)` — local STT, TTS, and LLM running in the browser.
+[`browser-chat/`](browser-chat/) — local STT, TTS, and LLM running in the browser.
 
 - Zero-install for end users — open a URL, no Python or build step
 - Tiny local LLM (Qwen2.5-0.5B / SmolLM2-360M / Qwen2.5-1.5B), ~350 MB cached once

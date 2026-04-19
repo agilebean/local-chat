@@ -20,7 +20,7 @@ So: **misaki[en]**, **spacy**, and **num2words** are all required for the app’
 From the repo root with the localai env activated:
 
 ```bash
-python scripts/check_imports.py
+python src/check_imports.py
 ```
 
 Then run the app (needs Metal/GPU):

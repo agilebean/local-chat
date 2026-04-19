@@ -26,11 +26,11 @@ browserchat
 ```bash
 # With Kokoro TTS (run inside the localai env):
 mamba activate localai
-cd local-chat/demos/browser-chat
+cd local-chat/browser-chat
 python server.py
 
 # Or, browser-only TTS (no localai env needed):
-cd local-chat/demos/browser-chat
+cd local-chat/browser-chat
 python3 server.py
 ```
 
@@ -54,7 +54,7 @@ The local server requirement is one command (or one double-click).
 ## What's in the box
 
 ```
-demos/browser-chat/                  ~30 KB total
+browser-chat/                  ~30 KB total
 ├── index.html              # the entire app (UI + chat loop)
 ├── server.py               # static-file server + /tts and /health endpoints
 ├── llm_config.json         # model list + sampling + prompt filename
@@ -115,7 +115,7 @@ To re-sync after editing the canonical prompt (run from the local-chat repo root
 
 ```bash
 python3 -c "from src.prompts import load_prompt; print(load_prompt('friend','system'))" \
-  > demos/browser-chat/friend.txt
+  > browser-chat/friend.txt
 ```
 
 To demo a different persona, edit `friend.txt` directly (or re-sync from

@@ -8,7 +8,7 @@ so importing this script doesn't trigger a multi-second model load.
 import argparse
 from pathlib import Path
 
-from src.music import get_music_generator
+from music import get_music_generator
 
 MODEL_CHOICES = {
     "small": "facebook/musicgen-small",

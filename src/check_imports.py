@@ -1,12 +1,11 @@
 #!/usr/bin/env python3
 """Check that all required modules import and Kokoro deps (misaki.en, spacy, num2words) are present.
-Run from repo root with: python scripts/check_imports.py
+Run from repo root with: python src/check_imports.py
 Does not load ML models (no Metal/GPU required for this script).
 """
 import sys
 from pathlib import Path
 
-# Ensure repo root is on path when run as python scripts/check_imports.py
 _repo_root = Path(__file__).resolve().parent.parent
 if str(_repo_root) not in sys.path:
     sys.path.insert(0, str(_repo_root))

@@ -22,8 +22,8 @@ from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
-IMPROV_ROOT = HERE.parent.parent
-sys.path.insert(0, str(IMPROV_ROOT))
+REPO_ROOT = HERE.parent
+sys.path.insert(0, str(REPO_ROOT))
 
 # Voice list is just constants — safe to import even without MLX.
 try:
