@@ -1,12 +1,13 @@
-# Vendored Dependencies
+# MLX MusicGen
 
-## MLX MusicGen (`music/musicgen/`)
+## About (`music/musicgen/`)
 
 Source: [`ml-explore/mlx-examples`](https://github.com/ml-explore/mlx-examples) — the
 `musicgen/`, `encodec/`, and `t5/` example folders.
 
-Vendored (not pip-installed) because `audiocraft` (the upstream PyPI package) pulls
-heavy unrelated dependencies. The MLX port is self-contained and fits in ~150 KB.
+Included directly in this repo (not pip-installed) because `audiocraft` (the upstream
+PyPI package) pulls heavy unrelated dependencies. The MLX port is self-contained and
+fits in ~150 KB.
 
 ### How to reinstall from scratch
 
