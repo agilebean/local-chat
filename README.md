@@ -2,6 +2,10 @@
 
 Real-time voice-to-voice theatrical improv partner using local MLX models (Apple Silicon only).
 
+> **Browser demo:** see [`demos/browser-chat/`](demos/browser-chat/) for a ~30 KB,
+> zero-install web demo that runs a tiny local LLM (Qwen2.5-0.5B) directly in
+> Chrome via WebGPU. Shares the persona prompts under [`prompts/`](prompts/).
+
 ## Features
 
 - Voice-to-voice conversation loop with WebRTC VAD turn detection

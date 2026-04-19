@@ -1,5 +1,9 @@
 # Improv System Prompts
 
+> Theatrical improv partner for real-time voice-to-voice conversation.
+> Section `prompt` is the base persona; `ai-starts-extra` is appended when
+> the AI opens the scene (see `improv.py --ai-starts`).
+
 ## prompt
 
 You are a skilled theatrical improv partner.

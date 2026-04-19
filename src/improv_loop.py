@@ -2,7 +2,6 @@
 import os
 import warnings
 import logging
-from pathlib import Path
 
 # Suppress HuggingFace progress bars and warnings
 os.environ['HF_HUB_DISABLE_PROGRESS_BARS'] = '1'
@@ -28,25 +27,15 @@ from src.llm import MlxLlm
 from src.tts import MlxTts
 from src.stt import MlxStt
 from src.audio_io import AudioRecorder, AudioPlayer
+from src.prompts import load_prompt
 
 console = Console()
 
-_PROMPT_FILE = Path(__file__).parent / "prompt.md"
 
-
-def _load_prompt(section: str) -> str:
-    """Load a named section from prompt.md."""
-    text = _PROMPT_FILE.read_text()
-    start = text.find(f"## {section}\n")
-    if start == -1:
-        raise ValueError(f"Section '{section}' not found in {_PROMPT_FILE}")
-    start = text.index("\n", start) + 1
-    end = text.find("\n## ", start)
-    return text[start:] .strip() if end == -1 else text[start:end].strip()
-
-
-IMPROV_SYSTEM_PROMPT = _load_prompt("prompt")
-IMPROV_SYSTEM_PROMPT_AI_STARTS = _load_prompt("prompt") + "\n\n" + _load_prompt("ai-starts-extra")
+IMPROV_SYSTEM_PROMPT = load_prompt("improv", "prompt")
+IMPROV_SYSTEM_PROMPT_AI_STARTS = (
+    load_prompt("improv", "prompt") + "\n\n" + load_prompt("improv", "ai-starts-extra")
+)
 
 
 @dataclass
