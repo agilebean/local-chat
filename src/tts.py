@@ -9,25 +9,12 @@ from typing import Optional, Tuple
 
 
 KOKORO_MODEL_ID = "mlx-community/Kokoro-82M-bf16"
-KOKORO_VOICES = ["af_heart", "af_bella", "af_nicole", "af_sky", "am_adam", "am_echo", "am_liam", "bf_emma", "bf_isabella", "bm_george", "bm_lewis"]
+KOKORO_VOICES = ["af_heart", "bm_george"]
 KOKORO_DEFAULT_VOICE = "af_heart"
 
-# Subjective voice characterizations (timbre / register / vibe) used by the
-# browser-chat demo and any future --list-voices CLI helper. The base accent
-# and gender are already encoded in the code prefix (af_=US Female, bm_=UK
-# Male, etc.); these add the qualitative cues you can't derive from the name.
 KOKORO_VOICE_DESCRIPTIONS = {
-    "af_heart":     "feminine light",
-    "af_bella":     "feminine dark",
-    "af_nicole":    "whisper, dark",
-    "af_sky":       "feminine US neutral",
-    "am_adam":      "masculine neutral, old",
-    "am_echo":      "masculine neutral, young",
-    "am_liam":      "salesy",
-    "bf_emma":      "feminine UK neutral, old",
-    "bf_isabella":  "feminine UK neutral, young",
-    "bm_george":    "masculine elder, approachable",
-    "bm_lewis":     "masculine narrator",
+    "af_heart":  "feminine light",
+    "bm_george": "masculine elder, approachable",
 }
 
 
