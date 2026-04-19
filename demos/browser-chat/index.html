@@ -6,14 +6,25 @@
   <title>Browser Chat — local LLM in your browser</title>
   <style>
     :root {
-      --bg: #0f1115;
-      --panel: #181b22;
-      --border: #2a2f3a;
-      --text: #e6e8ec;
-      --muted: #8a92a4;
-      --accent: #6ea8ff;
-      --user: #2563eb;
-      --assistant: #2a2f3a;
+      /* Bright app shell + shades-of-blue palette */
+      --bg: #eaf2fb;            /* page background, very pale blue */
+      --surface: #ffffff;       /* control panels, status */
+      --surface-hover: #f4f8fd;
+      --border: #c5d4e8;        /* soft blue-gray */
+      --border-strong: #94a8c4; /* focused/active borders */
+      --text: #0f1f3d;          /* deep navy */
+      --muted: #4a5b78;         /* slate blue */
+      --primary: #2563eb;       /* main blue */
+      --primary-dark: #1d4ed8;
+      --primary-soft: #dbeafe;  /* highlight tint */
+
+      /* Chat island — Atom One Dark palette (softer blue-grey "stage") */
+      --chat-bg: #282c34;        /* Atom One Dark editor background */
+      --chat-border: #3e4451;    /* Atom selection grey */
+      --user: #2563eb;           /* keeps the page accent for continuity */
+      --user-text: #ffffff;
+      --assistant: #3a3f4b;      /* one shade above chat-bg */
+      --assistant-text: #abb2bf; /* Atom default foreground */
     }
     * { box-sizing: border-box; }
     html, body {
@@ -26,7 +37,7 @@
       font-size: 15px;
     }
     main {
-      max-width: 720px;
+      max-width: 760px;
       margin: 0 auto;
       padding: 24px 16px 16px;
       display: flex;
@@ -34,49 +45,83 @@
       height: 100%;
     }
     header { margin-bottom: 12px; }
-    h1 { margin: 0 0 4px; font-size: 22px; font-weight: 600; }
+    h1 { margin: 0 0 4px; font-size: 22px; font-weight: 600; color: var(--primary-dark); }
     .subtitle { color: var(--muted); font-size: 13px; }
     .controls {
       display: flex;
       align-items: center;
       gap: 10px;
-      margin: 16px 0 12px;
+      margin: 8px 0;
       flex-wrap: wrap;
     }
     select, button, input[type="text"] {
-      background: var(--panel);
+      background: var(--surface);
       color: var(--text);
       border: 1px solid var(--border);
       border-radius: 6px;
       padding: 8px 12px;
       font-size: 14px;
       font-family: inherit;
+      transition: border-color .15s, background-color .15s;
     }
-    select { cursor: pointer; min-width: 280px; }
-    button { cursor: pointer; }
-    button:disabled { opacity: 0.5; cursor: not-allowed; }
-    button.primary { background: var(--accent); color: #0f1115; border-color: var(--accent); font-weight: 600; }
+    select:hover, button:hover:not(:disabled), input[type="text"]:hover { border-color: var(--border-strong); }
+    select:focus, input[type="text"]:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 3px var(--primary-soft); }
+    select { cursor: pointer; min-width: 200px; }
+    select:disabled, button:disabled { opacity: 0.5; cursor: not-allowed; }
+    button { cursor: pointer; color: var(--primary-dark); border-color: var(--border-strong); }
+    button:hover:not(:disabled) { background: var(--primary-soft); }
+    button.primary {
+      background: var(--primary);
+      color: #ffffff;
+      border-color: var(--primary);
+      font-weight: 600;
+    }
+    button.primary:hover:not(:disabled) { background: var(--primary-dark); border-color: var(--primary-dark); }
     .controls label { display: flex; align-items: center; gap: 6px; color: var(--muted); font-size: 13px; cursor: pointer; }
+    .controls input[type="checkbox"] { accent-color: var(--primary); }
+    .hidden { display: none !important; }
+
+    /* Two-line status panel */
     #status {
-      background: var(--panel);
+      background: var(--surface);
       border: 1px solid var(--border);
+      border-left: 3px solid var(--primary);
       border-radius: 6px;
-      padding: 8px 12px;
-      font-size: 13px;
-      color: var(--muted);
-      margin-bottom: 12px;
+      padding: 10px 14px;
+      margin: 10px 0 12px;
+      min-height: 54px;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      gap: 2px;
     }
+    #status-main {
+      color: var(--text);
+      font-weight: 500;
+      font-size: 14px;
+      line-height: 1.3;
+    }
+    #status-detail {
+      color: var(--muted);
+      font-size: 12px;
+      font-family: ui-monospace, "SF Mono", Menlo, monospace;
+      line-height: 1.4;
+      min-height: 1em;
+      word-break: break-word;
+    }
+
     #chat {
       flex: 1;
       overflow-y: auto;
-      background: var(--panel);
-      border: 1px solid var(--border);
+      background: var(--chat-bg);
+      border: 1px solid var(--chat-border);
       border-radius: 8px;
       padding: 14px;
       display: flex;
       flex-direction: column;
       gap: 10px;
       min-height: 280px;
+      box-shadow: 0 1px 3px rgba(15, 31, 61, 0.08);
     }
     .msg {
       max-width: 85%;
@@ -86,12 +131,11 @@
       white-space: pre-wrap;
       word-wrap: break-word;
     }
-    .msg.user { background: var(--user); color: white; align-self: flex-end; border-bottom-right-radius: 4px; }
-    .msg.assistant { background: var(--assistant); align-self: flex-start; border-bottom-left-radius: 4px; }
+    .msg.user { background: var(--user); color: var(--user-text); align-self: flex-end; border-bottom-right-radius: 4px; }
+    .msg.assistant { background: var(--assistant); color: var(--assistant-text); align-self: flex-start; border-bottom-left-radius: 4px; }
     .msg .role { font-size: 11px; opacity: 0.7; margin-bottom: 2px; text-transform: uppercase; letter-spacing: 0.5px; }
     .composer { display: flex; gap: 8px; margin-top: 12px; }
     #input { flex: 1; }
-    #input:focus { outline: none; border-color: var(--accent); }
     .footer { margin-top: 8px; font-size: 12px; color: var(--muted); text-align: center; }
   </style>
 </head>
@@ -99,17 +143,28 @@
   <main>
     <header>
       <h1>Browser Chat</h1>
-      <div class="subtitle">A tiny local LLM running in your browser via WebGPU. No server, no API key.</div>
+      <div class="subtitle">A tiny local LLM running in your browser via WebGPU. No API key.</div>
     </header>
 
     <div class="controls">
-      <select id="model"></select>
+      <select id="model" title="LLM model"></select>
       <button id="start" class="primary">Load model</button>
-      <label><input type="checkbox" id="speak" checked /> speak replies</label>
       <button id="reset" type="button">Reset chat</button>
     </div>
 
-    <div id="status">Idle. Click "Load model" to begin (one-time download to your browser cache).</div>
+    <div class="controls">
+      <select id="tts" title="TTS engine">
+        <option value="browser">TTS: Browser (built-in)</option>
+        <option value="kokoro" disabled>TTS: Kokoro (improv backend)</option>
+      </select>
+      <select id="voice" class="hidden" title="Kokoro voice"></select>
+      <label><input type="checkbox" id="speak" checked /> speak replies</label>
+    </div>
+
+    <div id="status" aria-live="polite">
+      <div id="status-main">Idle</div>
+      <div id="status-detail">Click "Load model" to begin (one-time download to your browser cache).</div>
+    </div>
 
     <div id="chat" aria-live="polite"></div>
 
@@ -128,19 +183,28 @@
     import { CreateMLCEngine } from "https://esm.run/@mlc-ai/web-llm";
 
     const $ = (id) => document.getElementById(id);
-    const statusEl = $("status");
+    const statusMain = $("status-main");
+    const statusDetail = $("status-detail");
     const chatEl = $("chat");
+
+    function setStatus(main, detail = "") {
+      statusMain.textContent = main;
+      statusDetail.textContent = detail;
+    }
     const inputEl = $("input");
     const sendBtn = $("send");
     const startBtn = $("start");
     const resetBtn = $("reset");
     const modelSel = $("model");
+    const ttsSel = $("tts");
+    const voiceSel = $("voice");
     const speakChk = $("speak");
 
     let engine = null;
     let cfg = null;
     let systemPrompt = "";
     let messages = [];
+    let kokoroAvailable = false;
 
     async function bootstrap() {
       try {
@@ -150,11 +214,77 @@
           modelSel.appendChild(new Option(m, m, m === cfg.model, m === cfg.model));
         }
         if (!("gpu" in navigator)) {
-          statusEl.textContent = "WebGPU is not available in this browser. Use Chrome 113+, Edge, or Safari 26+.";
+          setStatus("WebGPU not available", "Use Chrome 113+, Edge, or Safari 26+.");
           startBtn.disabled = true;
+          await detectKokoro();
+          return;
         }
+        await detectKokoro();
+        // Auto-load the default model so the user can chat immediately.
+        loadSelectedModel();
       } catch (e) {
-        statusEl.textContent = "Failed to load demo files: " + e.message + " (did you start a local server? see README)";
+        setStatus("Failed to load demo files", `${e.message} — did you start a local server? See README.`);
+      }
+    }
+
+    async function detectKokoro() {
+      try {
+        const r = await fetch("/health", { cache: "no-store" });
+        if (!r.ok) return;
+        const h = await r.json();
+        kokoroAvailable = !!h.kokoro_available;
+        const kokoroOption = ttsSel.querySelector('option[value="kokoro"]');
+        if (kokoroAvailable) {
+          kokoroOption.disabled = false;
+          kokoroOption.textContent = "TTS: Kokoro 82M (improv backend)";
+          populateVoices(h.voices, h.default_voice, h.voice_descriptions || {});
+        } else {
+          kokoroOption.textContent = "TTS: Kokoro (backend not running)";
+        }
+      } catch {
+        // No backend — leave Kokoro option disabled.
+      }
+    }
+
+    // Kokoro voice codes follow <accent><gender>_<name>, e.g. "af_heart".
+    // Parse the prefix into a human label so the dropdown is self-documenting.
+    function parseVoiceMeta(code) {
+      const ACCENT = { a: "American", b: "British", j: "Japanese", z: "Chinese" };
+      const GENDER = { f: "Female", m: "Male" };
+      const m = /^([a-z])([fm])_(.+)$/.exec(code);
+      if (!m) return { group: "Other", name: code };
+      const accent = ACCENT[m[1]] || m[1].toUpperCase();
+      const gender = GENDER[m[2]] || m[2].toUpperCase();
+      const name = m[3].charAt(0).toUpperCase() + m[3].slice(1);
+      return { group: `${accent} ${gender}`, name };
+    }
+
+    function populateVoices(voices, defaultVoice, descriptions) {
+      const groups = new Map();
+      for (const code of voices) {
+        const { group, name } = parseVoiceMeta(code);
+        if (!groups.has(group)) groups.set(group, []);
+        groups.get(group).push({
+          code,
+          name,
+          desc: descriptions[code] || "",
+          isDefault: code === defaultVoice,
+        });
+      }
+      voiceSel.innerHTML = "";
+      for (const [groupLabel, items] of groups) {
+        const og = document.createElement("optgroup");
+        og.label = groupLabel;
+        for (const { code, name, desc, isDefault } of items) {
+          // Format: "Name — characterization (default)"
+          const parts = [name];
+          if (desc) parts.push("— " + desc);
+          if (isDefault) parts.push("(default)");
+          const opt = new Option(parts.join(" "), code);
+          if (isDefault) opt.selected = true;
+          og.appendChild(opt);
+        }
+        voiceSel.appendChild(og);
       }
     }
 
@@ -171,38 +301,87 @@
       return s.replace(/[&<>"]/g, c => ({ "&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;" }[c]));
     }
 
-    function speak(text) {
-      if (!speakChk.checked || !window.speechSynthesis) return;
+    async function speak(text) {
+      if (!speakChk.checked || !text) return;
+      if (ttsSel.value === "kokoro" && kokoroAvailable) {
+        await speakKokoro(text);
+      } else {
+        speakBrowser(text);
+      }
+    }
+
+    function speakBrowser(text) {
+      if (!window.speechSynthesis) return;
       window.speechSynthesis.cancel();
       window.speechSynthesis.speak(new SpeechSynthesisUtterance(text));
+    }
+
+    async function speakKokoro(text) {
+      try {
+        const r = await fetch("/tts", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ text, voice: voiceSel.value || undefined }),
+        });
+        if (!r.ok) {
+          const err = await r.json().catch(() => ({}));
+          setStatus("Kokoro TTS error", err.error || r.statusText);
+          return;
+        }
+        const blob = await r.blob();
+        const url = URL.createObjectURL(blob);
+        const audio = new Audio(url);
+        audio.onended = () => URL.revokeObjectURL(url);
+        audio.play();
+      } catch (e) {
+        setStatus("Kokoro TTS error", e.message);
+      }
     }
 
     function resetConversation() {
       messages = [{ role: "system", content: systemPrompt }];
       chatEl.innerHTML = "";
-      if (engine) statusEl.textContent = `Ready — ${modelSel.value}. Say something.`;
+      if (engine) setStatus("Ready", `${modelSel.value} loaded — say something.`);
     }
 
-    startBtn.addEventListener("click", async () => {
+    async function loadSelectedModel() {
       const model = modelSel.value;
       startBtn.disabled = true;
       modelSel.disabled = true;
+      inputEl.disabled = true;
+      sendBtn.disabled = true;
       try {
         engine = await CreateMLCEngine(model, {
-          initProgressCallback: (r) => { statusEl.textContent = r.text; }
+          initProgressCallback: (r) => {
+            const pct = typeof r.progress === "number" ? Math.round(r.progress * 100) : null;
+            const main = pct !== null && pct > 0
+              ? `Loading ${model} — ${pct}%`
+              : `Loading ${model}…`;
+            setStatus(main, r.text || "");
+          }
         });
         resetConversation();
         inputEl.disabled = false;
         sendBtn.disabled = false;
         inputEl.focus();
       } catch (e) {
-        statusEl.textContent = "Load failed: " + e.message;
+        setStatus("Load failed", e.message);
+      } finally {
+        // Always re-enable so user can retry or switch models.
         startBtn.disabled = false;
         modelSel.disabled = false;
+        startBtn.textContent = "Switch model";
       }
-    });
+    }
+
+    startBtn.addEventListener("click", loadSelectedModel);
 
     resetBtn.addEventListener("click", () => { if (engine) resetConversation(); });
+
+    ttsSel.addEventListener("change", () => {
+      const showVoice = ttsSel.value === "kokoro" && kokoroAvailable && voiceSel.options.length > 0;
+      voiceSel.classList.toggle("hidden", !showVoice);
+    });
 
     async function send() {
       const text = inputEl.value.trim();
