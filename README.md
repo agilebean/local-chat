@@ -179,6 +179,13 @@ python musicgen.py "calm piano" -d 10 -m small -o output/calm.wav
 | `-m / --model`    | `small`            | MusicGen size: `small`, `medium`, `large` |
 | `-o / --output`   | `output/music.wav` | Output `.wav` path                        |
 
+> **PyTorch → MLX conversion on first use.** The first time you run
+> music generation (any `--genre` or `musicgen.py` call), the vendored
+> `from_pretrained()` downloads the PyTorch `state_dict.bin`, converts
+> weights to MLX `safetensors`, and caches them in the Hugging Face Hub
+> cache directory. After that, torch is no longer needed at runtime.
+> See the [Installation](#installation) notes on removing torch to
+> reclaim ~492 MB from the environment.
 
 > **Pipelining with YouTube to Speech.** No manual chaining needed — the
 > YouTube CLI already triggers MusicGen as a single command:
@@ -302,6 +309,8 @@ elements or repeat words despite prompt constraints.
 - **spaCy / pydantic `ConfigError` on Python 3.14** — `ConfigError: unable to infer type for attribute "REGEX"`. Stick to Python 3.12; if you
 accidentally created a 3.14 env, drop it and recreate with
 `mamba create -n localai python=3.12 -y`.
-- `**musicgen.py` fails with "PyTorch was not found"** — only happens if
-you uninstalled `torch` manually. Reinstall with `pip install torch`.
+- `**musicgen.py` fails with "PyTorch was not found"** — caused by
+  removing torch before the first music generation (the safetensors
+  conversion needs torch one time). Reinstall with `pip install torch`,
+  run musicgen once, then uninstall it again.
 

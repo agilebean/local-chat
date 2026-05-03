@@ -330,28 +330,65 @@ class MusicGen(nn.Module):
         return out_weights
 
     @classmethod
-    def from_pretrained(cls, path_or_repo: str):
-        import torch
-        from huggingface_hub import snapshot_download
-
-        path = Path(path_or_repo)
-        if not path.exists():
-            path = Path(
-                snapshot_download(
-                    repo_id=path_or_repo,
-                    allow_patterns=["*.json", "state_dict.bin"],
-                )
-            )
-
+    def _load_config(cls, path: Path):
         with open(path / "config.json", "r") as f:
             config = SimpleNamespace(**json.load(f))
             config.text_encoder = SimpleNamespace(**config.text_encoder)
             config.audio_encoder = SimpleNamespace(**config.audio_encoder)
             config.decoder = SimpleNamespace(**config.decoder)
+        return config
 
-        weights = torch.load(path / "state_dict.bin", weights_only=True)["best_state"]
-        weights = {k: mx.array(v) for k, v in weights.items()}
-        weights = cls.sanitize(weights)
+    @classmethod
+    def _hf_cache_path(cls, repo_id: str) -> Path:
+        """Return the HF Hub cache directory for a repo ID."""
+        # Hugging Face Hub encodes slashes as --
+        name = repo_id.replace("/", "--")
+        return Path.home() / ".cache" / "huggingface" / "hub" / f"models--{name}"
+
+    @classmethod
+    def _resolve_snapshot_path(cls, repo_id: str) -> Path | None:
+        """Return the snapshot path for a cached repo, or None if uncached."""
+        cache_dir = cls._hf_cache_path(repo_id)
+        refs_file = cache_dir / "refs" / "main"
+        if not refs_file.exists():
+            return None
+        commit_hash = refs_file.read_text().strip()
+        snapshot = cache_dir / "snapshots" / commit_hash
+        return snapshot if snapshot.exists() else None
+
+    @classmethod
+    def from_pretrained(cls, path_or_repo: str):
+        from huggingface_hub import snapshot_download
+
+        path = Path(path_or_repo)
+        if not path.exists():
+            # Look in HF cache first — avoids downloading state_dict.bin
+            # when pre-converted MLX weights already exist.
+            cached = cls._resolve_snapshot_path(path_or_repo)
+            if cached is not None and (cached / "mlx_weights.safetensors").exists():
+                path = cached
+            else:
+                path = Path(
+                    snapshot_download(
+                        repo_id=path_or_repo,
+                        allow_patterns=["*.json", "state_dict.bin"],
+                    )
+                )
+
+        config = cls._load_config(path)
+
+        safetensors_path = path / "mlx_weights.safetensors"
+        if safetensors_path.exists():
+            weights = mx.load(str(safetensors_path))
+        else:
+            import torch
+
+            weights = torch.load(
+                path / "state_dict.bin", weights_only=True
+            )["best_state"]
+            weights = {k: mx.array(v) for k, v in weights.items()}
+            weights = cls.sanitize(weights)
+            mx.save_safetensors(str(safetensors_path), weights)
 
         model = MusicGen(config)
         model.load_weights(list(weights.items()))
