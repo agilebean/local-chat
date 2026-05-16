@@ -86,8 +86,8 @@ class ImprovSession:
         self.state = ConversationState(system_prompt=prompt)
 
         # Initialize components (lazy-loaded)
-        from src.llm import MODEL_VARIANTS, _VLM_KEYS
-        self.llm = MlxLlm(model_path=MODEL_VARIANTS[llm_variant], use_vlm=(llm_variant in _VLM_KEYS))
+        from src.llm import MODEL_VARIANTS
+        self.llm = MlxLlm(model_path=MODEL_VARIANTS[llm_variant])
         self.tts = MlxTts()
         self.stt = MlxStt()
         self.recorder = AudioRecorder()
